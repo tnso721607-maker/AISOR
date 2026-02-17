@@ -37,22 +37,25 @@ export async function analyzeSiteImage(
             }
           },
           {
-            text: `Act as an expert technical estimator for Petrol Pump facilities. 
-            The user is conducting a "${workType}" for multiple combined facilities.
+            text: `Act as a precision technical estimator for Petrol Pump facilities. 
+            The user is conducting a "${workType}" for multiple facilities.
             
-            FACILITY SPECIFIC CONTEXT:
+            FACILITY SPECIFIC CONTEXT & DIMENSIONS:
             ${dimensionsContext}
             
-            YOU MUST USE ONLY the following items from the provided Database inventory to generate the estimate:
+            DB INVENTORY (ONLY USE ITEMS FROM THIS LIST):
             ${dbInventoryString}
             
-            INSTRUCTIONS:
-            1. Analyze the image to identify site conditions across all selected facilities.
-            2. For each facility listed in the context, use its specific dimensions to calculate quantities of the matching items from the inventory.
-            3. Ensure the BOM covers items from all selected categories where appropriate based on the image, work type, and facility-specific dimensions.
-            4. Be precise with measurements and technical justifications in the 'estimatedScope' field.
+            STRICT WORKFLOW INSTRUCTIONS:
+            1. Analyze the image for overall site conditions.
+            2. For EACH selected facility listed above, perform a SEPARATE and SEQUENTIAL estimation logic:
+               - Take Facility A: Evaluate image + specific dimensions -> Select exact DB items -> Calculate quantities.
+               - Take Facility B: Evaluate image + specific dimensions -> Select exact DB items -> Calculate quantities.
+               - Repeat for all.
+            3. YOUR OUTPUT MUST BE GROUPED FACILITY-WISE. Do not mix items from different facilities in the same section.
+            4. If an item is required for multiple facilities, list it under each facility section separately with its own calculated quantity.
             
-            Return the analysis in a strict JSON format matching the schema.`
+            Return the analysis in a strict JSON format.`
           }
         ]
       },
@@ -74,21 +77,32 @@ export async function analyzeSiteImage(
                 required: ["category", "description", "severity"]
               }
             },
-            bom: {
+            facilityEstimates: {
               type: Type.ARRAY,
+              description: "Array of estimates grouped by facility name.",
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  item: { type: Type.STRING, description: "MUST be the exact name from the provided database items." },
-                  unit: { type: Type.STRING },
-                  quantity: { type: Type.NUMBER },
-                  estimatedScope: { type: Type.STRING, description: "Contextual explanation for why this item/quantity is needed for the specific facility dimension." }
+                  facility: { type: Type.STRING, description: "Name of the facility from the selection." },
+                  items: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        item: { type: Type.STRING, description: "MUST be the exact name from the provided database items." },
+                        unit: { type: Type.STRING },
+                        quantity: { type: Type.NUMBER },
+                        estimatedScope: { type: Type.STRING, description: "Technical justification for this specific quantity based on facility dimensions." }
+                      },
+                      required: ["item", "unit", "quantity", "estimatedScope"]
+                    }
+                  }
                 },
-                required: ["item", "unit", "quantity", "estimatedScope"]
+                required: ["facility", "items"]
               }
             }
           },
-          required: ["summary", "problems", "bom"]
+          required: ["summary", "problems", "facilityEstimates"]
         }
       }
     });
