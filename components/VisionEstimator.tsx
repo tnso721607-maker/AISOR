@@ -4,11 +4,7 @@ import { Camera, Upload, Loader2, ShieldAlert, Wrench, Zap, HardHat, FileText, S
 import { analyzeSiteImage } from '../services/geminiService';
 import { VisionAnalysisResult } from '../types';
 
-interface VisionEstimatorProps {
-  onBOMGenerated: (bom: any[]) => void;
-}
-
-const VisionEstimator: React.FC<VisionEstimatorProps> = ({ onBOMGenerated }) => {
+const VisionEstimator: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<VisionAnalysisResult | null>(null);
@@ -129,12 +125,6 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ onBOMGenerated }) => 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Generated BOM</h3>
-                      <button 
-                        onClick={() => onBOMGenerated(result.bom)}
-                        className="text-[10px] font-bold text-indigo-600 flex items-center gap-1 hover:underline"
-                      >
-                        <Send className="w-3 h-3" /> Push to Tender Builder
-                      </button>
                     </div>
                     {result.bom.map((item, i) => (
                       <div key={i} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl border-dashed">
