@@ -8,9 +8,7 @@ import {
   CheckCircle, ChevronRight, Download, Upload, 
   FileText, Briefcase, Camera, ArrowRight
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
-import { SORItem, TenderItem, VisionAnalysisResult } from './types';
-import { geminiService } from './services/geminiService';
+import { SORItem } from './types';
 import RateForm from './components/RateForm';
 import RateList from './components/RateList';
 import VisionEstimator from './components/VisionEstimator';
@@ -34,13 +32,11 @@ const generateCSV = (headers: string[], rows: any[][], fileName: string) => {
 };
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'database' | 'tender' | 'vision'>('database');
+  const [view, setView] = useState<'database' | 'vision'>('database');
   const [sorData, setSorData] = useState<SORItem[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<SORItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [tenderItems, setTenderItems] = useState<TenderItem[]>([]);
-  const [isProcessingTender, setIsProcessingTender] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('smart_rate_store_v3');
@@ -90,21 +86,6 @@ const App: React.FC = () => {
     generateCSV(headers, rows, 'SmartRate_Database');
   };
 
-  const handleExportTender = () => {
-    const headers = [
-      'Tender Item', 'Quantity', 'Requested Scope', 'Estimated Rate (₹)', 
-      'Quoted Rate (₹)', 'Unit', 'Total Quoted (₹)', 'Matched Database Item',
-      'Source', 'Status'
-    ];
-    const rows = tenderItems.map(i => [
-      i.name, i.quantity, i.requestedScope, i.estimatedRate || 'N/A',
-      i.matchedRate?.rate || 'N/A', i.matchedRate?.unit || 'N/A',
-      (i.quantity * (i.matchedRate?.rate || 0)).toFixed(2),
-      i.matchedRate?.name || 'N/A', i.matchedRate?.source || '', i.status.toUpperCase()
-    ]);
-    generateCSV(headers, rows, 'SmartRate_Quotation');
-  };
-
   const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -122,30 +103,6 @@ const App: React.FC = () => {
       }
     };
     reader.readAsText(file);
-  };
-
-  const handleProcessTender = async (itemsToProcess: any[]) => {
-    setIsProcessingTender(true);
-    const results: TenderItem[] = [];
-    for (const p of itemsToProcess) {
-      const matchedId = await geminiService.findBestMatchingItem(
-        p.item, 
-        p.estimatedScope, 
-        sorData.map(d => ({ id: d.id, name: d.name }))
-      );
-      const match = sorData.find(d => d.id === matchedId);
-      results.push({
-        id: crypto.randomUUID(),
-        name: p.item,
-        quantity: p.quantity || 1,
-        requestedScope: p.estimatedScope,
-        matchedRate: match,
-        status: match ? 'matched' : 'no-match'
-      });
-    }
-    setTenderItems(results);
-    setView('tender');
-    setIsProcessingTender(false);
   };
 
   const filteredRates = useMemo(() => sorData.filter(i => 
@@ -166,7 +123,6 @@ const App: React.FC = () => {
         <nav className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
           <button onClick={() => setView('database')} className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${view === 'database' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>Database</button>
           <button onClick={() => setView('vision')} className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${view === 'vision' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>Site Audit</button>
-          <button onClick={() => setView('tender')} className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${view === 'tender' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>Tender Results</button>
         </nav>
 
         <div className="flex items-center space-x-2">
@@ -216,87 +172,7 @@ const App: React.FC = () => {
         )}
 
         {view === 'vision' && (
-          <VisionEstimator onBOMGenerated={handleProcessTender} />
-        )}
-
-        {view === 'tender' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {isProcessingTender ? (
-              <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm">
-                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mb-4" />
-                <h2 className="text-xl font-bold text-slate-800">Processing Quotation...</h2>
-                <p className="text-slate-500">Matching BOM items with your rate database.</p>
-              </div>
-            ) : tenderItems.length === 0 ? (
-              <div className="bg-white p-8 sm:p-20 rounded-[2.5rem] border border-slate-100 text-center shadow-sm flex flex-col items-center">
-                <div className="bg-slate-50 p-6 rounded-full mb-6">
-                  <Camera className="w-12 h-12 text-slate-300" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">No Active Quotation</h2>
-                <p className="text-slate-500 mb-8 max-w-md mx-auto">Results from your Site Audit will appear here automatically. Perform an audit to generate a bill of materials.</p>
-                <button onClick={() => setView('vision')} className="flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
-                  Go to Site Audit <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">Tender Analysis Results</h2>
-                    <p className="text-slate-500 text-sm">Validated BOM from Site Audit against benchmark database</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button onClick={handleExportTender} className="flex items-center px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-emerald-700 transition-all">
-                      <FileSpreadsheet className="w-4 h-4 mr-2" /> Export Quotation
-                    </button>
-                    <button onClick={() => { if(confirm("Discard these results?")) setTenderItems([]); }} className="p-2.5 bg-white border border-slate-200 text-slate-300 hover:text-red-500 rounded-xl transition-colors"><Trash2 className="w-5 h-5" /></button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                  {tenderItems.map(item => (
-                    <div key={item.id} className="bg-white p-6 rounded-3xl border border-slate-100 flex flex-col sm:flex-row justify-between gap-6 hover:shadow-md transition-shadow">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-bold text-slate-800 text-lg">{item.name}</h4>
-                          <span className="bg-slate-900 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter">Qty: {item.quantity}</span>
-                        </div>
-                        <p className="text-xs text-slate-400 italic mb-4 line-clamp-1 leading-relaxed">Scope: {item.requestedScope}</p>
-                        {item.matchedRate ? (
-                          <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-                            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1 flex items-center"><CheckCircle className="w-3 h-3 mr-1" /> Verified Match</p>
-                            <p className="font-bold text-indigo-700 text-sm">{item.matchedRate.name}</p>
-                          </div>
-                        ) : (
-                          <div className="p-4 bg-red-50 rounded-2xl border border-red-100 text-red-500 text-xs font-bold uppercase flex items-center">
-                            <AlertCircle className="w-4 h-4 mr-2" /> No database match
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right min-w-[220px] border-t sm:border-t-0 sm:border-l border-slate-50 pt-4 sm:pt-0 sm:pl-8 flex flex-col justify-center">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Extension</span>
-                        <div className="text-4xl font-black text-indigo-600 tracking-tighter">₹{(item.quantity * (item.matchedRate?.rate || 0)).toLocaleString()}</div>
-                        <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">₹{(item.matchedRate?.rate || 0).toLocaleString()} / {item.matchedRate?.unit || 'unit'}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="bg-slate-900 text-white p-10 rounded-[3rem] flex flex-col sm:flex-row justify-between items-center shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] -mr-32 -mt-32" />
-                  <div className="relative z-10 text-center sm:text-left">
-                    <h3 className="text-2xl font-bold">Consolidated Bid Total</h3>
-                    <p className="text-slate-400 text-sm mt-1">Sum of validated benchmarks for site audit repairs</p>
-                  </div>
-                  <div className="relative z-10 text-center sm:text-right mt-6 sm:mt-0">
-                    <div className="text-5xl sm:text-6xl font-black text-indigo-400 tracking-tighter">
-                      ₹{tenderItems.reduce((s, i) => s + (i.quantity * (i.matchedRate?.rate || 0)), 0).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <VisionEstimator />
         )}
       </main>
 
