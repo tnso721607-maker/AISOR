@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-// Added missing Upload icon to the lucide-react imports
-import { Camera, Loader2, ShieldAlert, Wrench, Zap, HardHat, FileText, X, Image as ImageIcon, Sparkles, Ruler, Construction, PenTool, Upload } from 'lucide-react';
+import { Camera, Loader2, ShieldAlert, Wrench, Zap, HardHat, FileText, X, Image as ImageIcon, Sparkles, Ruler, Construction, PenTool, Upload, Check } from 'lucide-react';
 import { analyzeSiteImage } from '../services/geminiService';
 import { VisionAnalysisResult, SORItem } from '../types';
 
@@ -15,7 +14,7 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
   const [result, setResult] = useState<VisionAnalysisResult | null>(null);
   const [workType, setWorkType] = useState<'New Construction' | 'Maintenance' | 'Damage Repair'>('Maintenance');
   const [dimensions, setDimensions] = useState('');
-  const [selectedFacility, setSelectedFacility] = useState('');
+  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -24,6 +23,14 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
     const sources = Array.from(new Set(sorData.map(item => item.source))).filter(Boolean);
     return sources.sort();
   }, [sorData]);
+
+  const toggleFacility = (facility: string) => {
+    setSelectedFacilities(prev => 
+      prev.includes(facility) 
+        ? prev.filter(f => f !== facility) 
+        : [...prev, facility]
+    );
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,8 +45,8 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
   };
 
   const handleAnalysis = async () => {
-    if (!image || !selectedFacility || !dimensions) {
-      alert("Please upload an image, select a facility, and provide dimensions.");
+    if (!image || selectedFacilities.length === 0 || !dimensions) {
+      alert("Please upload an image, select at least one facility, and provide dimensions.");
       return;
     }
 
@@ -48,14 +55,14 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
       const base64Data = image.split(',')[1];
       const mimeType = image.split(';')[0].split(':')[1];
       
-      // Filter database items relevant to the selected facility
-      const relevantDbItems = sorData.filter(item => item.source === selectedFacility);
+      // Filter database items relevant to ALL selected facilities
+      const relevantDbItems = sorData.filter(item => selectedFacilities.includes(item.source));
 
       const analysis = await analyzeSiteImage(
         base64Data, 
         mimeType, 
         workType, 
-        selectedFacility, 
+        selectedFacilities, 
         dimensions, 
         relevantDbItems
       );
@@ -142,18 +149,30 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
 
               <div>
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                  <PenTool className="w-3 h-3" /> Select Facility
+                  <PenTool className="w-3 h-3" /> Select Facilities
                 </label>
-                <select 
-                  value={selectedFacility} 
-                  onChange={(e) => setSelectedFacility(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold"
-                >
-                  <option value="">Choose a facility category...</option>
-                  {facilityOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
+                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+                  {facilityOptions.map(opt => {
+                    const isActive = selectedFacilities.includes(opt);
+                    return (
+                      <button
+                        key={opt}
+                        onClick={() => toggleFacility(opt)}
+                        className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1.5 ${
+                          isActive 
+                            ? 'bg-indigo-100 border-indigo-300 text-indigo-700 shadow-sm' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-indigo-200'
+                        }`}
+                      >
+                        {isActive && <Check className="w-3 h-3" />}
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedFacilities.length === 0 && (
+                  <p className="text-[10px] text-slate-400 mt-1 italic">Select one or more facilities to audit.</p>
+                )}
               </div>
 
               <div>
@@ -171,7 +190,7 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
 
               <button 
                 onClick={handleAnalysis} 
-                disabled={isAnalyzing || !image || !selectedFacility || !dimensions}
+                disabled={isAnalyzing || !image || selectedFacilities.length === 0 || !dimensions}
                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-xl shadow-indigo-100 mt-4"
               >
                 {isAnalyzing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6" />}
@@ -187,9 +206,11 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
                 <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-3xl">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-black text-indigo-900 text-lg">Analysis Summary</h3>
-                    <span className="px-3 py-1 bg-white rounded-full text-[10px] font-black text-indigo-600 border border-indigo-100 uppercase tracking-wider">
-                      {workType}
-                    </span>
+                    <div className="flex gap-2">
+                      <span className="px-3 py-1 bg-white rounded-full text-[10px] font-black text-indigo-600 border border-indigo-100 uppercase tracking-wider">
+                        {workType}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-indigo-700 text-sm leading-relaxed">{result.summary}</p>
                 </div>
@@ -275,7 +296,7 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-700">Estimate Engine Ready</h3>
                 <p className="text-sm font-medium mt-2 max-w-xs mx-auto text-slate-500">
-                  Upload an image and fill out the details on the left to generate a professional Schedule of Rates.
+                  Upload an image and select your facility categories on the left to generate a multi-facility audit.
                 </p>
               </div>
             )}
