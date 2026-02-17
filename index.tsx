@@ -12,6 +12,7 @@ import { SORItem } from './types';
 import RateForm from './components/RateForm';
 import RateList from './components/RateList';
 import VisionEstimator from './components/VisionEstimator';
+import { INITIAL_SOR_DATA } from './data';
 
 const generateCSV = (headers: string[], rows: any[][], fileName: string) => {
   const content = [
@@ -42,15 +43,36 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('smart_rate_store_v3');
     if (saved) {
       try {
-        setSorData(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSorData(parsed);
+        } else {
+          // Initialize with seed data if empty
+          const seeded = INITIAL_SOR_DATA.map(item => ({
+            ...item,
+            id: crypto.randomUUID(),
+            timestamp: Date.now()
+          }));
+          setSorData(seeded);
+        }
       } catch (e) {
         console.error("Failed to load saved data");
       }
+    } else {
+      // First time use: Initialize with seed data
+      const seeded = INITIAL_SOR_DATA.map(item => ({
+        ...item,
+        id: crypto.randomUUID(),
+        timestamp: Date.now()
+      }));
+      setSorData(seeded);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('smart_rate_store_v3', JSON.stringify(sorData));
+    if (sorData.length > 0) {
+      localStorage.setItem('smart_rate_store_v3', JSON.stringify(sorData));
+    }
   }, [sorData]);
 
   const handleAddOrUpdateRate = (item: Omit<SORItem, 'id' | 'timestamp'>) => {
