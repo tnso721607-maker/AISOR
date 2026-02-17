@@ -47,7 +47,6 @@ const App: React.FC = () => {
         if (Array.isArray(parsed) && parsed.length > 0) {
           setSorData(parsed);
         } else {
-          // Initialize with seed data if empty
           const seeded = INITIAL_SOR_DATA.map(item => ({
             ...item,
             id: crypto.randomUUID(),
@@ -59,7 +58,6 @@ const App: React.FC = () => {
         console.error("Failed to load saved data");
       }
     } else {
-      // First time use: Initialize with seed data
       const seeded = INITIAL_SOR_DATA.map(item => ({
         ...item,
         id: crypto.randomUUID(),
@@ -160,13 +158,13 @@ const App: React.FC = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
               <div>
                 <h1 className="text-4xl font-black text-slate-800 tracking-tighter">Rate Repository</h1>
-                <p className="text-slate-400 font-medium">Managing {sorData.length} technical benchmark entries.</p>
+                <p className="text-slate-400 font-medium">Managing {sorData.length} entries.</p>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                 <div className="relative group w-full sm:w-80">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                  <input placeholder="Search items or refs..." className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                  <input placeholder="Search..." className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all text-base" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                 </div>
                 
                 <div className="flex space-x-2">
