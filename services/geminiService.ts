@@ -73,6 +73,77 @@ export async function analyzeSiteImage(base64Image: string, mimeType: string): P
   }
 }
 
+// Using gemini-3-flash-preview to parse raw text into SOR database items
+export async function parseRatesFromText(text: string): Promise<any[]> {
+  const ai = getClient();
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Extract Schedule of Rates (SOR) items from the following text. 
+      For each item, identify the name, unit of measurement, rate in ₹, scope of work description, and source reference.
+      
+      Text:
+      ${text}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              unit: { type: Type.STRING },
+              rate: { type: Type.NUMBER },
+              scopeOfWork: { type: Type.STRING },
+              source: { type: Type.STRING }
+            },
+            required: ["name", "unit", "rate", "scopeOfWork", "source"]
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || '[]');
+  } catch (error) {
+    console.error("Bulk rate parsing error:", error);
+    return [];
+  }
+}
+
+// Using gemini-3-flash-preview to parse tender items from raw text
+export async function parseBulkItems(text: string): Promise<any[]> {
+  const ai = getClient();
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Extract tender/BOQ items from the following text. 
+      Identify the item name, quantity (default to 1 if not mentioned), requested scope of work, and any estimated rate if available.
+      
+      Text:
+      ${text}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              quantity: { type: Type.NUMBER },
+              requestedScope: { type: Type.STRING },
+              estimatedRate: { type: Type.NUMBER }
+            },
+            required: ["name", "quantity", "requestedScope"]
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || '[]');
+  } catch (error) {
+    console.error("Bulk item parsing error:", error);
+    return [];
+  }
+}
+
 // Using gemini-3-pro-preview for complex matching tasks
 export async function findBestMatchingItem(targetItemName: string, targetScope: string, dbItems: { id: string; name: string }[]): Promise<string | null> {
   if (dbItems.length === 0) return null;
@@ -103,71 +174,9 @@ export async function findBestMatchingItem(targetItemName: string, targetScope: 
   }
 }
 
-export async function parseBulkItems(text: string): Promise<any[]> {
-  const ai = getClient();
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Extract a list of tender items from this text: "${text}". 
-      Include name, quantity, requestedScope, and any provided estimatedRate.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              quantity: { type: Type.NUMBER },
-              requestedScope: { type: Type.STRING },
-              estimatedRate: { type: Type.NUMBER }
-            },
-            required: ["name", "quantity", "requestedScope"]
-          }
-        }
-      }
-    });
-    return JSON.parse(response.text || '[]');
-  } catch (e) {
-    console.error("Parse bulk items error:", e);
-    return [];
-  }
-}
-
-export async function parseRatesFromText(text: string): Promise<any[]> {
-  const ai = getClient();
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Extract Schedule of Rates (SOR) items (name, unit, rate, scopeOfWork, source) from this text: "${text}".`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              unit: { type: Type.STRING },
-              rate: { type: Type.NUMBER },
-              scopeOfWork: { type: Type.STRING },
-              source: { type: Type.STRING },
-            },
-            required: ["name", "unit", "rate", "scopeOfWork", "source"]
-          },
-        },
-      },
-    });
-    return JSON.parse(response.text || '[]');
-  } catch (error) {
-    console.error("Parse rates error:", error);
-    return [];
-  }
-}
-
 export const geminiService = {
   analyzeSiteImage,
-  findBestMatchingItem,
+  parseRatesFromText,
   parseBulkItems,
-  parseRatesFromText
+  findBestMatchingItem
 };
