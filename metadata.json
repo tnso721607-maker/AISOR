@@ -1,5 +1,8 @@
+
 {
-  "name": "Rate extractor from tenders",
-  "description": "A professional tool for managing Schedule of Rates (SOR). Store item rates with detailed scopes, automatically select lowest benchmark prices, and use AI-powered semantic matching to validate tender quotes.",
-  "requestFramePermissions": []
+  "name": "SmartRate Vision",
+  "description": "Professional SOR management with AI Vision Site Audits. Identify petrol pump maintenance issues from photos and generate automatic BOMs.",
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

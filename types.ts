@@ -19,3 +19,22 @@ export interface TenderItem {
   matchedRate?: SORItem;
   status: 'pending' | 'matched' | 'review' | 'no-match';
 }
+
+export interface VisionProblem {
+  category: 'Civil' | 'Electrical' | 'Mechanical' | 'Safety' | 'General';
+  description: string;
+  severity: 'Low' | 'Medium' | 'High';
+}
+
+export interface VisionBOMItem {
+  item: string;
+  unit: string;
+  quantity: number;
+  estimatedScope: string;
+}
+
+export interface VisionAnalysisResult {
+  problems: VisionProblem[];
+  bom: VisionBOMItem[];
+  summary: string;
+}
