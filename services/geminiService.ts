@@ -1,11 +1,25 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { SORItem } from "../types";
 
 const getClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Using gemini-3-flash-preview for general site analysis with image input
-export async function analyzeSiteImage(base64Image: string, mimeType: string): Promise<any> {
+export async function analyzeSiteImage(
+  base64Image: string, 
+  mimeType: string,
+  workType: 'New Construction' | 'Maintenance' | 'Damage Repair',
+  facility: string,
+  dimensions: string,
+  relevantDbItems: SORItem[]
+): Promise<any> {
   const ai = getClient();
+  
+  // Format the DB items into a simple string for the prompt
+  const dbInventoryString = relevantDbItems.map(item => 
+    `- Item: "${item.name}", Unit: "${item.unit}", Benchmark Scope: "${item.scopeOfWork}"`
+  ).join('\n');
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -18,15 +32,21 @@ export async function analyzeSiteImage(base64Image: string, mimeType: string): P
             }
           },
           {
-            text: `Act as an expert petrol pump facility inspector and site engineer. Analyze this site image.
-            1. Identify specific problems/defects in:
-               - Civil works (pavement cracks, canopy damage, paint, drainage)
-               - Electrical works (lighting, exposed wiring, DU display, earthing)
-               - Mechanical works (DU nozzles, hoses, air towers, STP issues)
-               - Safety (fire extinguishers, signage, hazards)
-            2. Generate a structured Bill of Materials (BOM) for the necessary repair/maintenance work.
+            text: `Act as an expert technical estimator for Petrol Pump facilities. 
+            The user is conducting a "${workType}" for the facility: "${facility}".
+            The specified area/dimensions for this work are: "${dimensions}".
             
-            Return the analysis in a strict JSON format.`
+            YOU MUST USE ONLY the following items from the provided Database inventory to generate the estimate:
+            ${dbInventoryString}
+            
+            INSTRUCTIONS:
+            1. Analyze the image to identify specific site conditions (defects if repair, current state if new).
+            2. Match the user's requirement (dimensions and work type) with the relevant items from the provided list.
+            3. Calculate the required quantities based on the dimensions: "${dimensions}".
+            4. If it's "New Construction", include all fundamental items for that facility.
+            5. If it's "Damage Repair" or "Maintenance", focus on the issues visible in the image plus routine items.
+            
+            Return the analysis in a strict JSON format matching the schema.`
           }
         ]
       },
@@ -53,10 +73,10 @@ export async function analyzeSiteImage(base64Image: string, mimeType: string): P
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  item: { type: Type.STRING },
+                  item: { type: Type.STRING, description: "MUST be the exact name from the provided database items." },
                   unit: { type: Type.STRING },
                   quantity: { type: Type.NUMBER },
-                  estimatedScope: { type: Type.STRING }
+                  estimatedScope: { type: Type.STRING, description: "Contextual explanation for why this item/quantity is needed." }
                 },
                 required: ["item", "unit", "quantity", "estimatedScope"]
               }
