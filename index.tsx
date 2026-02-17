@@ -194,7 +194,7 @@ const App: React.FC = () => {
         )}
 
         {view === 'vision' && (
-          <VisionEstimator />
+          <VisionEstimator sorData={sorData} />
         )}
       </main>
 
