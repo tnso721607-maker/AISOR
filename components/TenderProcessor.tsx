@@ -1,9 +1,7 @@
 
 import React, { useState } from 'react';
 import { ClipboardList, CheckCircle, AlertCircle, Loader2, Trash2, FileSpreadsheet, Sparkles, Search, TrendingDown, TrendingUp } from 'lucide-react';
-// Corrected: Removed .ts extension from import
 import { SORItem, TenderItem } from '../types';
-// Corrected: Removed .ts extension from import
 import { parseBulkItems, findBestMatchingItem } from '../services/geminiService';
 
 interface TenderProcessorProps {
@@ -20,7 +18,6 @@ const TenderProcessor: React.FC<TenderProcessorProps> = ({ sorData }) => {
     if (!inputText.trim()) return;
     setProcessing(true);
     
-    // 1. Parse bulk text into structured items
     const parsed = await parseBulkItems(inputText);
     
     const initialTenderItems: TenderItem[] = parsed.map(p => ({
@@ -34,16 +31,11 @@ const TenderProcessor: React.FC<TenderProcessorProps> = ({ sorData }) => {
 
     const processedItems: TenderItem[] = [];
 
-    // 2. Intelligent Matching Loop
     for (const tenderItem of initialTenderItems) {
-      // Step A: Try Exact Name Match
       const exactMatches = sorData.filter(sor => sor.name.toLowerCase() === tenderItem.name.toLowerCase());
       
       if (exactMatches.length > 0) {
-        // Pick the lowest rate among exact matches
         const lowestExact = [...exactMatches].sort((a, b) => a.rate - b.rate)[0];
-        
-        // Check if scope is identical
         const isScopeIdentical = lowestExact.scopeOfWork.toLowerCase().trim() === tenderItem.requestedScope.toLowerCase().trim();
         
         processedItems.push({
@@ -54,9 +46,7 @@ const TenderProcessor: React.FC<TenderProcessorProps> = ({ sorData }) => {
         continue;
       }
 
-      // Step B: Try Semantic/Similar Match via Gemini
       const dbItemSummary = sorData.map(d => ({ id: d.id, name: d.name }));
-      
       const matchedId = await findBestMatchingItem(tenderItem.name, tenderItem.requestedScope, dbItemSummary);
       
       if (matchedId) {
@@ -64,14 +54,13 @@ const TenderProcessor: React.FC<TenderProcessorProps> = ({ sorData }) => {
         if (bestMatch) {
           processedItems.push({
             ...tenderItem,
-            status: 'review', // Semantic matches always require manual review
+            status: 'review',
             matchedRate: bestMatch
           });
           continue;
         }
       }
 
-      // Step C: No Match Found
       processedItems.push({ ...tenderItem, status: 'no-match' });
     }
 
@@ -153,7 +142,7 @@ const TenderProcessor: React.FC<TenderProcessorProps> = ({ sorData }) => {
           </div>
           
           <textarea 
-            className="w-full h-64 p-5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-xs sm:text-sm bg-slate-50 leading-relaxed border-dashed" 
+            className="w-full h-64 p-5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-base bg-slate-50 leading-relaxed border-dashed" 
             placeholder={`Example:\n1. 5HP Centrifugal Pump, 2 units, with installation. Est Rate: 25000\n2. LT Control Panel, 400V, standard wiring. Price: 120000`} 
             value={inputText} 
             onChange={(e) => setInputText(e.target.value)} 
