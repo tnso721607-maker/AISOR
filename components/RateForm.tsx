@@ -1,9 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, ClipboardPaste, ListPlus, Loader2 } from 'lucide-react';
-// Corrected: Removed .ts extension from import
 import { parseRatesFromText } from '../services/geminiService';
-// Corrected: Removed .ts extension from import
 import { SORItem } from '../types';
 
 interface RateFormProps {
@@ -84,25 +82,25 @@ const RateForm: React.FC<RateFormProps> = ({ editingItem, onSubmit, onBulkSubmit
           <form onSubmit={handleSubmitSingle} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Item Name</label>
-              <input type="text" required className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              <input type="text" required className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30 text-base" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Unit</label>
-                <input type="text" required className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} />
+                <input type="text" required className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30 text-base" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Rate (₹)</label>
-                <input type="number" required step="0.01" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30" value={formData.rate} onChange={e => setFormData({ ...formData, rate: e.target.value })} />
+                <input type="number" required step="0.01" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30 text-base" value={formData.rate} onChange={e => setFormData({ ...formData, rate: e.target.value })} />
               </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Scope of Work</label>
-              <textarea required rows={4} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none bg-slate-50/30" value={formData.scopeOfWork} onChange={e => setFormData({ ...formData, scopeOfWork: e.target.value })} />
+              <textarea required rows={4} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none bg-slate-50/30 text-base" value={formData.scopeOfWork} onChange={e => setFormData({ ...formData, scopeOfWork: e.target.value })} />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Source</label>
-              <input type="text" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30" value={formData.source} onChange={e => setFormData({ ...formData, source: e.target.value })} />
+              <input type="text" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30 text-base" value={formData.source} onChange={e => setFormData({ ...formData, source: e.target.value })} />
             </div>
             <button type="submit" className="w-full py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg font-bold mt-4 transition-all">
               {editingItem ? 'Update Rate Card' : 'Add to Database'}
@@ -112,7 +110,7 @@ const RateForm: React.FC<RateFormProps> = ({ editingItem, onSubmit, onBulkSubmit
           <div className="space-y-6">
             {!previewItems.length ? (
               <div className="space-y-4">
-                <textarea rows={8} className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30 font-mono text-sm" placeholder="Paste SOR text here..." value={bulkText} onChange={e => setBulkText(e.target.value)} />
+                <textarea rows={8} className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/30 font-mono text-base" placeholder="Paste SOR text here..." value={bulkText} onChange={e => setBulkText(e.target.value)} />
                 <button onClick={handleScrape} disabled={isProcessing || !bulkText.trim()} className="w-full py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg font-bold flex items-center justify-center disabled:opacity-50">
                   {isProcessing ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Analysing...</> : <><ClipboardPaste className="w-5 h-5 mr-2" /> Scrape Data</>}
                 </button>
