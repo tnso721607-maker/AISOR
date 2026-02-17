@@ -6,7 +6,7 @@ import {
   Edit3, TrendingDown, Info, ClipboardList, 
   AlertCircle, Sparkles, FileSpreadsheet, TrendingUp, 
   CheckCircle, ChevronRight, Download, Upload, 
-  FileText, Briefcase, Camera
+  FileText, Briefcase, Camera, ArrowRight
 } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { SORItem, TenderItem, VisionAnalysisResult } from './types';
@@ -41,7 +41,6 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [tenderItems, setTenderItems] = useState<TenderItem[]>([]);
   const [isProcessingTender, setIsProcessingTender] = useState(false);
-  const [tenderInputText, setTenderInputText] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('smart_rate_store_v3');
@@ -125,23 +124,21 @@ const App: React.FC = () => {
     reader.readAsText(file);
   };
 
-  const handleProcessTender = async (itemsToProcess?: any[]) => {
+  const handleProcessTender = async (itemsToProcess: any[]) => {
     setIsProcessingTender(true);
-    const parsed = itemsToProcess || await geminiService.parseBulkItems(tenderInputText);
     const results: TenderItem[] = [];
-    for (const p of parsed) {
+    for (const p of itemsToProcess) {
       const matchedId = await geminiService.findBestMatchingItem(
-        p.name || p.item, 
-        p.requestedScope || p.estimatedScope, 
+        p.item, 
+        p.estimatedScope, 
         sorData.map(d => ({ id: d.id, name: d.name }))
       );
       const match = sorData.find(d => d.id === matchedId);
       results.push({
         id: crypto.randomUUID(),
-        name: p.name || p.item,
+        name: p.item,
         quantity: p.quantity || 1,
-        requestedScope: p.requestedScope || p.estimatedScope,
-        estimatedRate: p.estimatedRate,
+        requestedScope: p.estimatedScope,
         matchedRate: match,
         status: match ? 'matched' : 'no-match'
       });
@@ -167,9 +164,9 @@ const App: React.FC = () => {
         </div>
         
         <nav className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-          <button onClick={() => setView('database')} className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${view === 'database' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500'}`}>Database</button>
-          <button onClick={() => setView('vision')} className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${view === 'vision' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500'}`}>Site Audit</button>
-          <button onClick={() => setView('tender')} className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${view === 'tender' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500'}`}>Tender</button>
+          <button onClick={() => setView('database')} className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${view === 'database' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>Database</button>
+          <button onClick={() => setView('vision')} className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${view === 'vision' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>Site Audit</button>
+          <button onClick={() => setView('tender')} className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${view === 'tender' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>Tender Results</button>
         </nav>
 
         <div className="flex items-center space-x-2">
@@ -224,28 +221,35 @@ const App: React.FC = () => {
 
         {view === 'tender' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {tenderItems.length === 0 ? (
-              <div className="bg-white p-8 sm:p-12 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
-                <ClipboardList className="w-20 h-20 text-indigo-50 mx-auto mb-6" />
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">Automated Quote Generator</h2>
-                <p className="text-slate-500 mb-8 max-w-md mx-auto">Paste items or use the Vision Site Audit tool to generate a professional quotation.</p>
-                <textarea className="w-full h-48 p-5 border border-slate-200 rounded-3xl bg-slate-50 mb-6 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="Paste items (e.g., 5 units of 10HP Pump...)" value={tenderInputText} onChange={e => setTenderInputText(e.target.value)} />
-                <button onClick={() => handleProcessTender()} disabled={isProcessingTender || !tenderInputText.trim() || sorData.length === 0} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 flex items-center justify-center transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50">
-                  {isProcessingTender ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : <Sparkles className="w-6 h-6 mr-2" />} Build Quote from Database
+            {isProcessingTender ? (
+              <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mb-4" />
+                <h2 className="text-xl font-bold text-slate-800">Processing Quotation...</h2>
+                <p className="text-slate-500">Matching BOM items with your rate database.</p>
+              </div>
+            ) : tenderItems.length === 0 ? (
+              <div className="bg-white p-8 sm:p-20 rounded-[2.5rem] border border-slate-100 text-center shadow-sm flex flex-col items-center">
+                <div className="bg-slate-50 p-6 rounded-full mb-6">
+                  <Camera className="w-12 h-12 text-slate-300" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">No Active Quotation</h2>
+                <p className="text-slate-500 mb-8 max-w-md mx-auto">Results from your Site Audit will appear here automatically. Perform an audit to generate a bill of materials.</p>
+                <button onClick={() => setView('vision')} className="flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
+                  Go to Site Audit <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             ) : (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">Technical Analysis</h2>
-                    <p className="text-slate-500 text-sm">Validating requirements against benchmark database</p>
+                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">Tender Analysis Results</h2>
+                    <p className="text-slate-500 text-sm">Validated BOM from Site Audit against benchmark database</p>
                   </div>
                   <div className="flex space-x-2">
                     <button onClick={handleExportTender} className="flex items-center px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-emerald-700 transition-all">
-                      <FileSpreadsheet className="w-4 h-4 mr-2" /> Export Excel
+                      <FileSpreadsheet className="w-4 h-4 mr-2" /> Export Quotation
                     </button>
-                    <button onClick={() => setTenderItems([])} className="p-2.5 bg-white border border-slate-200 text-slate-300 hover:text-red-500 rounded-xl transition-colors"><Trash2 className="w-5 h-5" /></button>
+                    <button onClick={() => { if(confirm("Discard these results?")) setTenderItems([]); }} className="p-2.5 bg-white border border-slate-200 text-slate-300 hover:text-red-500 rounded-xl transition-colors"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </div>
 
@@ -278,13 +282,16 @@ const App: React.FC = () => {
                   ))}
                 </div>
 
-                <div className="bg-slate-900 text-white p-10 rounded-[3rem] flex flex-col sm:flex-row justify-between items-center shadow-2xl">
-                  <div>
+                <div className="bg-slate-900 text-white p-10 rounded-[3rem] flex flex-col sm:flex-row justify-between items-center shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] -mr-32 -mt-32" />
+                  <div className="relative z-10 text-center sm:text-left">
                     <h3 className="text-2xl font-bold">Consolidated Bid Total</h3>
-                    <p className="text-slate-400 text-sm mt-1">Sum of validated benchmarks</p>
+                    <p className="text-slate-400 text-sm mt-1">Sum of validated benchmarks for site audit repairs</p>
                   </div>
-                  <div className="text-5xl sm:text-6xl font-black text-indigo-400 tracking-tighter">
-                    ₹{tenderItems.reduce((s, i) => s + (i.quantity * (i.matchedRate?.rate || 0)), 0).toLocaleString()}
+                  <div className="relative z-10 text-center sm:text-right mt-6 sm:mt-0">
+                    <div className="text-5xl sm:text-6xl font-black text-indigo-400 tracking-tighter">
+                      ₹{tenderItems.reduce((s, i) => s + (i.quantity * (i.matchedRate?.rate || 0)), 0).toLocaleString()}
+                    </div>
                   </div>
                 </div>
               </div>
