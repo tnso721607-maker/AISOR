@@ -10,7 +10,7 @@ export async function analyzeSiteImage(
   mimeType: string,
   workType: 'New Construction' | 'Maintenance' | 'Damage Repair',
   facilities: string[],
-  dimensions: string,
+  facilityDimensions: Record<string, string>,
   relevantDbItems: SORItem[]
 ): Promise<any> {
   const ai = getClient();
@@ -18,6 +18,11 @@ export async function analyzeSiteImage(
   // Format the DB items into a simple string for the prompt
   const dbInventoryString = relevantDbItems.map(item => 
     `- [Category: ${item.source}] Item: "${item.name}", Unit: "${item.unit}", Benchmark Scope: "${item.scopeOfWork}"`
+  ).join('\n');
+
+  // Format dimensions per facility for the prompt
+  const dimensionsContext = facilities.map(f => 
+    `- Facility: ${f}, Dimensions/Quantity: ${facilityDimensions[f] || 'Not specified'}`
   ).join('\n');
 
   try {
@@ -33,17 +38,19 @@ export async function analyzeSiteImage(
           },
           {
             text: `Act as an expert technical estimator for Petrol Pump facilities. 
-            The user is conducting a "${workType}" for multiple combined facilities: ${facilities.join(', ')}.
-            The specified area/dimensions for this overall work are: "${dimensions}".
+            The user is conducting a "${workType}" for multiple combined facilities.
+            
+            FACILITY SPECIFIC CONTEXT:
+            ${dimensionsContext}
             
             YOU MUST USE ONLY the following items from the provided Database inventory to generate the estimate:
             ${dbInventoryString}
             
             INSTRUCTIONS:
             1. Analyze the image to identify site conditions across all selected facilities.
-            2. Match requirements for all selected facilities: ${facilities.join(', ')}.
-            3. Calculate quantities based on the dimensions: "${dimensions}".
-            4. Ensure the BOM covers items from all selected categories where appropriate based on the image and work type.
+            2. For each facility listed in the context, use its specific dimensions to calculate quantities of the matching items from the inventory.
+            3. Ensure the BOM covers items from all selected categories where appropriate based on the image, work type, and facility-specific dimensions.
+            4. Be precise with measurements and technical justifications in the 'estimatedScope' field.
             
             Return the analysis in a strict JSON format matching the schema.`
           }
@@ -75,7 +82,7 @@ export async function analyzeSiteImage(
                   item: { type: Type.STRING, description: "MUST be the exact name from the provided database items." },
                   unit: { type: Type.STRING },
                   quantity: { type: Type.NUMBER },
-                  estimatedScope: { type: Type.STRING, description: "Contextual explanation for why this item/quantity is needed." }
+                  estimatedScope: { type: Type.STRING, description: "Contextual explanation for why this item/quantity is needed for the specific facility dimension." }
                 },
                 required: ["item", "unit", "quantity", "estimatedScope"]
               }
