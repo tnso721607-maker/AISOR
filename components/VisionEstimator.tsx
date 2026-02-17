@@ -207,7 +207,7 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
                           <input 
                             type="text"
                             placeholder="e.g. 50 sqm, 10m x 5m, 12 units"
-                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium transition-all"
+                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-base font-medium transition-all"
                             value={facilityDimensions[facility] || ''}
                             onChange={(e) => handleDimensionChange(facility, e.target.value)}
                           />
