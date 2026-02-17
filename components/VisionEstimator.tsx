@@ -51,6 +51,8 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
       reader.onloadend = () => {
         setImage(reader.result as string);
         setResult(null);
+        // Reset input value so the same file can be uploaded again if needed
+        if (fileInputRef.current) fileInputRef.current.value = '';
       };
       reader.readAsDataURL(file);
     }
@@ -120,28 +122,34 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
           {/* Inputs Section */}
           <div className="lg:col-span-1 space-y-6">
             <div className="space-y-4">
-              <label className="block">
+              <div>
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                   <ImageIcon className="w-3 h-3" /> Site Image
                 </span>
                 {!image ? (
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all group"
+                  <label 
+                    className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all group flex flex-col items-center justify-center"
                   >
                     <Upload className="w-6 h-6 text-slate-300 mx-auto mb-2" />
                     <p className="text-xs text-slate-500 font-bold">Upload site photo</p>
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                  </div>
+                  </label>
                 ) : (
                   <div className="relative rounded-2xl overflow-hidden border border-slate-200 group aspect-video">
                     <img src={image} alt="Site capture" className="w-full h-full object-cover" />
-                    <button onClick={() => setImage(null)} className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur rounded-full text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg">
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setImage(null);
+                      }} 
+                      className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur rounded-full text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg z-10"
+                    >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 )}
-              </label>
+              </div>
 
               <div>
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
