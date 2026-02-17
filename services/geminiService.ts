@@ -38,7 +38,7 @@ export async function analyzeSiteImage(
           },
           {
             text: `Act as a precision technical estimator for Petrol Pump facilities. 
-            The user is conducting a "${workType}" for multiple facilities.
+            The user is conducting a "${workType}" audit for multiple facilities.
             
             FACILITY SPECIFIC CONTEXT & DIMENSIONS:
             ${dimensionsContext}
@@ -46,14 +46,21 @@ export async function analyzeSiteImage(
             DB INVENTORY (ONLY USE ITEMS FROM THIS LIST):
             ${dbInventoryString}
             
-            STRICT WORKFLOW INSTRUCTIONS:
-            1. Analyze the image for overall site conditions.
-            2. For EACH selected facility listed above, perform a SEPARATE and SEQUENTIAL estimation logic:
-               - Take Facility A: Evaluate image + specific dimensions -> Select exact DB items -> Calculate quantities.
-               - Take Facility B: Evaluate image + specific dimensions -> Select exact DB items -> Calculate quantities.
-               - Repeat for all.
-            3. YOUR OUTPUT MUST BE GROUPED FACILITY-WISE. Do not mix items from different facilities in the same section.
-            4. If an item is required for multiple facilities, list it under each facility section separately with its own calculated quantity.
+            STRICT SITE ANALYSIS & ESTIMATION WORKFLOW:
+            1. **Visual State Assessment**: Identify the CURRENT condition of the site from the image.
+               - Detect what is ALREADY INSTALLED or ERECTED.
+               - If the work type is "New Construction" and you see a component already in place (e.g., Canopy Structural Steel is clearly visible and erected), **DO NOT** include it in the BOM.
+               - Focus on "Missing Components" required to complete the facility (e.g., if steel is there, maybe roofing sheets, ceiling, or lighting are still needed).
+            
+            2. **Task Context**:
+               - **New Construction**: Only estimate items that are NOT visible or are clearly incomplete in the photo.
+               - **Maintenance**: Identify existing items that look worn, rusted, or dirty and require the specific maintenance SOR items.
+               - **Damage Repair**: Specifically look for structural damage, cracks, or broken elements and match them to repair SOR items.
+            
+            3. **Sequential Estimation**: For EACH selected facility:
+               - Take Facility X -> Cross-reference image vs. provided dimensions -> Perform "Gap Analysis" (Missing vs. Present) -> Select appropriate DB items.
+            
+            4. **Output Structure**: Group items FACILITY-WISE. Be technically descriptive in the 'estimatedScope' about why an item was included (e.g., "Structural steel excluded as existing frame is erected; roofing sheets required for completion").
             
             Return the analysis in a strict JSON format.`
           }
@@ -92,7 +99,7 @@ export async function analyzeSiteImage(
                         item: { type: Type.STRING, description: "MUST be the exact name from the provided database items." },
                         unit: { type: Type.STRING },
                         quantity: { type: Type.NUMBER },
-                        estimatedScope: { type: Type.STRING, description: "Technical justification for this specific quantity based on facility dimensions." }
+                        estimatedScope: { type: Type.STRING, description: "Technical justification based on site photo vs facility dimensions." }
                       },
                       required: ["item", "unit", "quantity", "estimatedScope"]
                     }
@@ -113,7 +120,6 @@ export async function analyzeSiteImage(
   }
 }
 
-// Rest of the service remains unchanged...
 export async function parseRatesFromText(text: string): Promise<any[]> {
   const ai = getClient();
   try {
