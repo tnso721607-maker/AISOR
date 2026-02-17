@@ -9,7 +9,7 @@ export async function analyzeSiteImage(
   base64Image: string, 
   mimeType: string,
   workType: 'New Construction' | 'Maintenance' | 'Damage Repair',
-  facility: string,
+  facilities: string[],
   dimensions: string,
   relevantDbItems: SORItem[]
 ): Promise<any> {
@@ -17,7 +17,7 @@ export async function analyzeSiteImage(
   
   // Format the DB items into a simple string for the prompt
   const dbInventoryString = relevantDbItems.map(item => 
-    `- Item: "${item.name}", Unit: "${item.unit}", Benchmark Scope: "${item.scopeOfWork}"`
+    `- [Category: ${item.source}] Item: "${item.name}", Unit: "${item.unit}", Benchmark Scope: "${item.scopeOfWork}"`
   ).join('\n');
 
   try {
@@ -33,18 +33,17 @@ export async function analyzeSiteImage(
           },
           {
             text: `Act as an expert technical estimator for Petrol Pump facilities. 
-            The user is conducting a "${workType}" for the facility: "${facility}".
-            The specified area/dimensions for this work are: "${dimensions}".
+            The user is conducting a "${workType}" for multiple combined facilities: ${facilities.join(', ')}.
+            The specified area/dimensions for this overall work are: "${dimensions}".
             
             YOU MUST USE ONLY the following items from the provided Database inventory to generate the estimate:
             ${dbInventoryString}
             
             INSTRUCTIONS:
-            1. Analyze the image to identify specific site conditions (defects if repair, current state if new).
-            2. Match the user's requirement (dimensions and work type) with the relevant items from the provided list.
-            3. Calculate the required quantities based on the dimensions: "${dimensions}".
-            4. If it's "New Construction", include all fundamental items for that facility.
-            5. If it's "Damage Repair" or "Maintenance", focus on the issues visible in the image plus routine items.
+            1. Analyze the image to identify site conditions across all selected facilities.
+            2. Match requirements for all selected facilities: ${facilities.join(', ')}.
+            3. Calculate quantities based on the dimensions: "${dimensions}".
+            4. Ensure the BOM covers items from all selected categories where appropriate based on the image and work type.
             
             Return the analysis in a strict JSON format matching the schema.`
           }
@@ -93,7 +92,7 @@ export async function analyzeSiteImage(
   }
 }
 
-// Using gemini-3-flash-preview to parse raw text into SOR database items
+// Rest of the service remains unchanged...
 export async function parseRatesFromText(text: string): Promise<any[]> {
   const ai = getClient();
   try {
@@ -129,7 +128,6 @@ export async function parseRatesFromText(text: string): Promise<any[]> {
   }
 }
 
-// Added parseBulkItems to extract structured tender items from raw text
 export async function parseBulkItems(text: string): Promise<any[]> {
   const ai = getClient();
   try {
@@ -164,7 +162,6 @@ export async function parseBulkItems(text: string): Promise<any[]> {
   }
 }
 
-// Added findBestMatchingItem to perform semantic matching between a tender item and database entries
 export async function findBestMatchingItem(name: string, scope: string, dbItems: { id: string, name: string }[]): Promise<string | null> {
   const ai = getClient();
   try {
@@ -186,7 +183,7 @@ export async function findBestMatchingItem(name: string, scope: string, dbItems:
           properties: {
             id: { 
               type: Type.STRING, 
-              description: "The ID of the matching item or an empty string if no reasonable match is found." 
+              description: "The ID of the matching item or an empty string if no reasonable match if found." 
             }
           },
           required: ["id"]
