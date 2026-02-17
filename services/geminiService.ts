@@ -109,14 +109,14 @@ export async function parseRatesFromText(text: string): Promise<any[]> {
   }
 }
 
-// Using gemini-3-flash-preview to parse tender items from raw text
+// Added parseBulkItems to extract structured tender items from raw text
 export async function parseBulkItems(text: string): Promise<any[]> {
   const ai = getClient();
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Extract tender/BOQ items from the following text. 
-      Identify the item name, quantity (default to 1 if not mentioned), requested scope of work, and any estimated rate if available.
+      contents: `Extract items from this tender/quotation text into a structured list.
+      For each item, identify the name, quantity, requested scope of work, and estimated rate/price if mentioned.
       
       Text:
       ${text}`,
@@ -139,37 +139,44 @@ export async function parseBulkItems(text: string): Promise<any[]> {
     });
     return JSON.parse(response.text || '[]');
   } catch (error) {
-    console.error("Bulk item parsing error:", error);
+    console.error("Bulk tender parsing error:", error);
     return [];
   }
 }
 
-// Using gemini-3-pro-preview for complex matching tasks
-export async function findBestMatchingItem(targetItemName: string, targetScope: string, dbItems: { id: string; name: string }[]): Promise<string | null> {
-  if (dbItems.length === 0) return null;
+// Added findBestMatchingItem to perform semantic matching between a tender item and database entries
+export async function findBestMatchingItem(name: string, scope: string, dbItems: { id: string, name: string }[]): Promise<string | null> {
   const ai = getClient();
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: `I have a tender item: "${targetItemName}" with scope: "${targetScope}".
-      From the database list below, find the ID of the best matching item.
-      Return "none" if no reasonable match is found.
+      model: 'gemini-3-flash-preview',
+      contents: `Match this tender requirement to the most appropriate database item.
+      Tender Item Name: ${name}
+      Requested Scope: ${scope}
       
-      Database Items:
-      ${dbItems.map(item => `- ${item.name} (ID: ${item.id})`).join('\n')}`,
+      Available Database Items:
+      ${JSON.stringify(dbItems)}
+      
+      Analyze the technical similarity. Return the "id" of the best match. 
+      If no match is found, return an empty string.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
-          properties: { matchedId: { type: Type.STRING } },
-          required: ["matchedId"]
-        },
-      },
+          properties: {
+            id: { 
+              type: Type.STRING, 
+              description: "The ID of the matching item or an empty string if no reasonable match is found." 
+            }
+          },
+          required: ["id"]
+        }
+      }
     });
     const result = JSON.parse(response.text || '{}');
-    return result.matchedId && result.matchedId !== "none" ? result.matchedId : null;
+    return result.id || null;
   } catch (error) {
-    console.error("Match error:", error);
+    console.error("Semantic matching error:", error);
     return null;
   }
 }
