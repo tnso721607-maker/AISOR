@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-import { Camera, Loader2, ShieldAlert, Wrench, Zap, HardHat, FileText, X, Image as ImageIcon, Sparkles, Ruler, Construction, PenTool, Upload, Check } from 'lucide-react';
+import { Camera, Loader2, ShieldAlert, Wrench, Zap, HardHat, FileText, X, Image as ImageIcon, Sparkles, Ruler, Construction, PenTool, Upload, Check, Hash } from 'lucide-react';
 import { analyzeSiteImage } from '../services/geminiService';
 import { VisionAnalysisResult, SORItem } from '../types';
 
@@ -13,23 +13,35 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<VisionAnalysisResult | null>(null);
   const [workType, setWorkType] = useState<'New Construction' | 'Maintenance' | 'Damage Repair'>('Maintenance');
-  const [dimensions, setDimensions] = useState('');
+  // Changed from single string to Record mapping facility name to its dimensions
+  const [facilityDimensions, setFacilityDimensions] = useState<Record<string, string>>({});
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Derive unique facilities (sources) from the database
   const facilityOptions = useMemo(() => {
     const sources = Array.from(new Set(sorData.map(item => item.source))).filter(Boolean);
     return sources.sort();
   }, [sorData]);
 
   const toggleFacility = (facility: string) => {
-    setSelectedFacilities(prev => 
-      prev.includes(facility) 
-        ? prev.filter(f => f !== facility) 
-        : [...prev, facility]
-    );
+    setSelectedFacilities(prev => {
+      const isSelected = prev.includes(facility);
+      if (isSelected) {
+        // Remove facility and its dimension
+        const { [facility]: _, ...rest } = facilityDimensions;
+        setFacilityDimensions(rest);
+        return prev.filter(f => f !== facility);
+      } else {
+        // Add facility and initialize empty dimension
+        setFacilityDimensions(prevDims => ({ ...prevDims, [facility]: '' }));
+        return [...prev, facility];
+      }
+    });
+  };
+
+  const handleDimensionChange = (facility: string, value: string) => {
+    setFacilityDimensions(prev => ({ ...prev, [facility]: value }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,18 +56,23 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
     }
   };
 
+  const isFormValid = useMemo(() => {
+    if (!image || selectedFacilities.length === 0) return false;
+    // Check if every selected facility has a non-empty dimension
+    return selectedFacilities.every(f => facilityDimensions[f] && facilityDimensions[f].trim().length > 0);
+  }, [image, selectedFacilities, facilityDimensions]);
+
   const handleAnalysis = async () => {
-    if (!image || selectedFacilities.length === 0 || !dimensions) {
-      alert("Please upload an image, select at least one facility, and provide dimensions.");
+    if (!isFormValid) {
+      alert("Please upload an image, select facilities, and provide dimensions for each.");
       return;
     }
 
     setIsAnalyzing(true);
     try {
-      const base64Data = image.split(',')[1];
-      const mimeType = image.split(';')[0].split(':')[1];
+      const base64Data = image!.split(',')[1];
+      const mimeType = image!.split(';')[0].split(':')[1];
       
-      // Filter database items relevant to ALL selected facilities
       const relevantDbItems = sorData.filter(item => selectedFacilities.includes(item.source));
 
       const analysis = await analyzeSiteImage(
@@ -63,7 +80,7 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
         mimeType, 
         workType, 
         selectedFacilities, 
-        dimensions, 
+        facilityDimensions, 
         relevantDbItems
       );
       
@@ -170,27 +187,38 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
                     );
                   })}
                 </div>
-                {selectedFacilities.length === 0 && (
-                  <p className="text-[10px] text-slate-400 mt-1 italic">Select one or more facilities to audit.</p>
-                )}
               </div>
 
-              <div>
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                  <Ruler className="w-3 h-3" /> Area / Dimensions
-                </label>
-                <input 
-                  type="text"
-                  placeholder="e.g. 50 sqm, 10m x 5m, 12 units"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                  value={dimensions}
-                  onChange={(e) => setDimensions(e.target.value)}
-                />
-              </div>
+              {selectedFacilities.length > 0 && (
+                <div className="space-y-4 pt-2 animate-in slide-in-from-top-2 duration-300">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <Ruler className="w-3 h-3" /> Specify Dimensions
+                  </label>
+                  <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    {selectedFacilities.map(facility => (
+                      <div key={facility} className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">{facility}</span>
+                        </div>
+                        <div className="relative group">
+                          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 group-focus-within:text-indigo-400 transition-colors" />
+                          <input 
+                            type="text"
+                            placeholder="e.g. 50 sqm, 10m x 5m, 12 units"
+                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium transition-all"
+                            value={facilityDimensions[facility] || ''}
+                            onChange={(e) => handleDimensionChange(facility, e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <button 
                 onClick={handleAnalysis} 
-                disabled={isAnalyzing || !image || selectedFacilities.length === 0 || !dimensions}
+                disabled={isAnalyzing || !isFormValid}
                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-xl shadow-indigo-100 mt-4"
               >
                 {isAnalyzing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6" />}
@@ -256,7 +284,6 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
                       </thead>
                       <tbody className="divide-y divide-slate-800">
                         {result.bom.map((bomItem, i) => {
-                          // Find matching rate in database
                           const dbMatch = sorData.find(d => d.name.toLowerCase() === bomItem.item.toLowerCase());
                           const rate = dbMatch?.rate || 0;
                           const total = bomItem.quantity * rate;
@@ -296,7 +323,7 @@ const VisionEstimator: React.FC<VisionEstimatorProps> = ({ sorData }) => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-700">Estimate Engine Ready</h3>
                 <p className="text-sm font-medium mt-2 max-w-xs mx-auto text-slate-500">
-                  Upload an image and select your facility categories on the left to generate a multi-facility audit.
+                  Upload an image and select your facility categories on the left. You'll be asked for specific dimensions for each selected facility.
                 </p>
               </div>
             )}
