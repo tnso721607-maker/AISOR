@@ -33,8 +33,13 @@ export interface VisionBOMItem {
   estimatedScope: string;
 }
 
+export interface FacilityEstimate {
+  facility: string;
+  items: VisionBOMItem[];
+}
+
 export interface VisionAnalysisResult {
   problems: VisionProblem[];
-  bom: VisionBOMItem[];
+  facilityEstimates: FacilityEstimate[];
   summary: string;
 }
